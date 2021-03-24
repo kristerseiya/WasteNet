@@ -1,0 +1,6 @@
+__pycache__
+azure
+config.py
+model
+score.py
+webserver.py

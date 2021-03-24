@@ -90,7 +90,7 @@ class WasteNetDataset(Dataset):
             label = get_label(file_path)
             if label != -1:
                 if store == 'ram':
-                    fptr = Image.open(file_path)
+                    fptr = Image.open(file_path).convert('RGB')
                     file_copy = fptr.copy()
                     fptr.close()
                     self.images.append(file_copy)
@@ -119,7 +119,7 @@ class WasteNetDataset(Dataset):
     def __getitem__(self, idx):
         if self.store == 'ram':
             return self.transform(self.images[idx]), self.labels[idx]
-        return self.transform(Image.open(self.images[idx])), self.labels[idx]
+        return self.transform(Image.open(self.images[idx]).convert('RGB')), self.labels[idx]
 
     def print_stats(self):
         (unique, counts) = np.unique(self.labels, return_counts=True)

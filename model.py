@@ -15,4 +15,5 @@ class WasteNet(nn.Module):
         x = self.featureExtracter(x)
         x = x.view(-1, 1280*7*7)
         x = self.classifier(x)
+        return x
         # return self.sigmoid(x)

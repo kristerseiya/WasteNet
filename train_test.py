@@ -2,6 +2,7 @@
 import torch.nn.functional as F
 import numpy as np
 import torch
+import os
 
 def train_single_epoch(model, optimizer, train_loader, device=None):
 
@@ -38,11 +39,11 @@ def test(model, test_loader, device=None):
         total_loss = 0.
         n_correct = 0.
         model.eval()
-        for images, labels in val_loader:
+        for images, labels in test_loader:
             images = images.to(device)
             labels = labels.to(device)
             output = model(images)
-            total_loss += F.cross_entropy(output, labels.float(), reduction='sum').item()
+            total_loss += F.cross_entropy(output, labels, reduction='sum').item()
             predict = torch.argmax(output, -1)
             n_correct += (predict == labels).sum().item()
 
@@ -62,7 +63,7 @@ def train(model, optimizer, max_epoch, train_loader,
     best_loss = 99999.
     tolerated = 0
 
-    log = np.zeros([max_epoch, 2], dtype=np.float)
+    log = np.zeros([max_epoch, 3], dtype=np.float)
 
     for e in range(max_epoch):
 
@@ -79,14 +80,14 @@ def train(model, optimizer, max_epoch, train_loader,
             print('Val Loss: {:.3f}'.format(log[e, 1]))
             print('Val Accs: {:.3f}'.format(log[e, 2]))
 
-            if (best_loss > log[e, 2]):
-                best_loss = log[e, 2]
-                if not os.path.exists(args.save):
-                    os.makedirs(args.save)
+            if (best_loss > log[e, 1]):
+                best_loss = log[e, 1]
+                if not os.path.exists(checkpoint_dir):
+                    os.makedirs(checkpoint_dir)
                 checkpoint_path = os.path.join(checkpoint_dir, 'checkpoint'+str(e+1)+'.pth')
                 torch.save(model.state_dict(), checkpoint_path)
                 print('Best Loss! Saved.')
-            elif max_tolerance < 0:
+            elif max_tolerance >= 0:
                 tolerated += 1
                 if tolerated > max_tolerance:
                     return log[0:e, :]

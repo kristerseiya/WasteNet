@@ -66,9 +66,10 @@ def train(model, optimizer, max_epoch, train_loader,
 
     for e in range(max_epoch):
 
+        print('Epoch #{:d}'.format(e+1))
+
         log[e, 0] = train_single_epoch(model, optimizer, train_loader, device)
 
-        print('Epoch #{:d}'.format(e+1))
         print('Train Loss: {:.3f}'.format(log[e, 0]))
 
         if val_loader is not None:

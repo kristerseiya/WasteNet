@@ -80,18 +80,22 @@ class WasteNetSubset(Dataset):
             print('{:s}: {:d}'.format(id_label(u), c))
 
 class WasteNetDataset(Dataset):
-    def __init__(self, root_dir, mode):
+    def __init__(self, root_dir, mode, store='ram'):
         super().__init__()
-        self.images = []
-        self.labels = []
+        self.images = list()
+        self.labels = list()
+        self.store = list()
 
         for file_path in glob.glob(os.path.join(root_dir, '*/**.png')):
             label = get_label(file_path)
             if label != -1:
-                fptr = Image.open(file_path)
-                file_copy = fptr.copy()
-                fptr.close()
-                self.images.append(file_copy)
+                if store == 'ram':
+                    fptr = Image.open(file_path)
+                    file_copy = fptr.copy()
+                    fptr.close()
+                    self.images.append(file_copy)
+                elif store == 'disk':
+                    self.images.append(file_path)
                 self.labels.append(label)
 
         if mode == 'train':
@@ -113,7 +117,9 @@ class WasteNetDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        return self.transform(self.images[idx]), self.labels[idx]
+        if store == 'ram':
+            return self.transform(self.images[idx]), self.labels[idx]
+        return self.transform(Image.open(self.images[idx])), self.labels[idx]
 
     def print_stats(self):
         (unique, counts) = np.unique(self.labels, return_counts=True)

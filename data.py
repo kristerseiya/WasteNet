@@ -117,7 +117,7 @@ class WasteNetDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        if store == 'ram':
+        if self.store == 'ram':
             return self.transform(self.images[idx]), self.labels[idx]
         return self.transform(Image.open(self.images[idx])), self.labels[idx]
 

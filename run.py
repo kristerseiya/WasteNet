@@ -2,10 +2,14 @@
 import config
 
 
-def run(model, image):
+def run(model, image, device=None):
+
+    if device == None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
     image = config.IMAGE_TRANFORM_INFERENCE(image)
     image = image.unsqueeze(0)
-    image = image.to(config.DEVICE)
+    image = image.to(device)
 
     with torch.no_grad():
         model.eval()
@@ -27,7 +31,8 @@ if __name__ == '__main__':
     parser.add_argument('--image', type=str, required=True)
     args = parser.parse_args()
 
-    net = model.WasteNet().to(config.DEVICE)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    net = model.WasteNet().to(device)
     net.load_state_dict(torch.load(args.weights, map_location=config.DEVICE))
 
     image = Image.open(args.image)

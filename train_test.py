@@ -4,10 +4,7 @@ import numpy as np
 import torch
 import os
 
-def train_single_epoch(model, optimizer, train_loader, device=None):
-
-    if device == None:
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+def train_single_epoch(model, optimizer, train_loader):
 
     dataset_size = len(train_loader.dataset)
 
@@ -15,8 +12,8 @@ def train_single_epoch(model, optimizer, train_loader, device=None):
     model.train()
     for images, labels in train_loader:
         optimizer.zero_grad()
-        images = images.to(device)
-        labels = labels.to(device)
+        images = images.to(model.device)
+        labels = labels.to(model.device)
         output = model(images)
         loss = F.cross_entropy(output, labels, reduction='sum')
         loss.backward()
@@ -28,10 +25,7 @@ def train_single_epoch(model, optimizer, train_loader, device=None):
 
     return total_loss / float(dataset_size)
 
-def test(model, test_loader, device=None):
-
-    if device == None:
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+def test(model, test_loader):
 
     dataset_size = len(test_loader.dataset)
 
@@ -40,8 +34,8 @@ def test(model, test_loader, device=None):
         n_correct = 0.
         model.eval()
         for images, labels in test_loader:
-            images = images.to(device)
-            labels = labels.to(device)
+            images = images.to(model.device)
+            labels = labels.to(model.device)
             output = model(images)
             total_loss += F.cross_entropy(output, labels, reduction='sum').item()
             predict = torch.argmax(output, -1)
@@ -54,11 +48,7 @@ def test(model, test_loader, device=None):
 
 
 def train(model, optimizer, max_epoch, train_loader,
-          val_loader=None, checkpoint_dir=None, max_tolerance=-1,
-          device=None):
-
-    if device == None:
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+          val_loader=None, checkpoint_dir=None, max_tolerance=-1):
 
     best_loss = 99999.
     tolerated = 0
@@ -69,13 +59,13 @@ def train(model, optimizer, max_epoch, train_loader,
 
         print('Epoch #{:d}'.format(e+1))
 
-        log[e, 0] = train_single_epoch(model, optimizer, train_loader, device)
+        log[e, 0] = train_single_epoch(model, optimizer, train_loader)
 
         print('Train Loss: {:.3f}'.format(log[e, 0]))
 
         if val_loader is not None:
 
-            log[e, 1], log[e, 2] = test(model, val_loader, device)
+            log[e, 1], log[e, 2] = test(model, val_loader)
 
             print('Val Loss: {:.3f}'.format(log[e, 1]))
             print('Val Accs: {:.3f}'.format(log[e, 2]))
@@ -120,6 +110,6 @@ if __name__ == '__main__':
     if args.weights != None:
         net.load_state_dict(torch.load(args.weights, map_location=device))
     optimizer = Adam(net.parameters(), lr=1e-4)
-    train(net, optimizer, args.n_epoch, trainloader, valloader, args.save, -1, device)
+    train(net, optimizer, args.n_epoch, trainloader, valloader, args.save, -1)
 
     torch.save(net.state_dict(), os.path.join(args.save, 'final.pth'))

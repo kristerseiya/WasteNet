@@ -84,7 +84,7 @@ class WasteNetDataset(Dataset):
         super().__init__()
         self.images = list()
         self.labels = list()
-        self.store = list()
+        self.store = store
 
         for file_path in glob.glob(os.path.join(root_dir, '*/**.png')):
             label = get_label(file_path)

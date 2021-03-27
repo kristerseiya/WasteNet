@@ -3,6 +3,8 @@ import torch.nn.functional as F
 import numpy as np
 import torch
 import os
+import seaborn as sn
+import pandas as pd
 
 def train_single_epoch(model, optimizer, train_loader):
 
@@ -46,6 +48,31 @@ def test(model, test_loader):
 
     return avg_loss, accuracy
 
+def get_confusion_matrix(model, test_loader, num_class=10):
+
+    cf_mtx = np.zeros([num_class, num_class])
+
+    with torch.no_grad():
+        model.eval()
+        for images, labels in test_loader:
+            images = images.to(model.device)
+            labels = labels.to(model.device)
+            output = model(images)
+            predict = torch.argmax(output, -1)
+
+            for l, p in zip(labels, predict):
+                cf_mtx[l, p] += 1
+
+    return cf_mtx
+
+def plot_confusion_matrix(confusion_matrix):
+    num_class = confusion_matrix.shape[0]
+    df_cm = pd.DataFrame(array, index=id_label(slice(num_class)),
+                                columns=id_label(slice(num_class)))
+    plt.figure(figsize=(10,7))
+    # sn.set(font_scale=1.4) # for label size
+    sn.heatmap(df_cm, annot=True, annot_kws={"size": 16}) # font size
+    plt.show()
 
 def train(model, optimizer, max_epoch, train_loader,
           val_loader=None, checkpoint_dir=None, max_tolerance=-1):

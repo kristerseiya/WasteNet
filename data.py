@@ -6,11 +6,11 @@ from PIL import Image
 import os
 import numpy as np
 
-transform_train = transforms.Compose([transforms.RandomResizedCrop(200),
+transform_train = transforms.Compose([transforms.RandomResizedCrop(200, scale=(0.5, 1.0)),
+                                      transforms.RandomAffine(180, shear=15),
+                                      transforms.ColorJitter(),
                                       transforms.RandomVerticalFlip(),
                                       transforms.RandomHorizontalFlip(),
-                                      transforms.RandomRotation(180),
-                                      transforms.ColorJitter(),
                                       transforms.ToTensor(),
                                       transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
                                      ])
@@ -21,40 +21,40 @@ transform_infer = transforms.Compose([transforms.Resize(200),
                                       transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
                                      ])
 
-def get_label(file_path):
-    dir = file_path.split('/')[-2]
-    if dir in ['cardboard_me', 'cardboard_trashnet', 'paper_box_google',
-               'paper_box_me', 'paper_bag_me', 'other_paper_me']:
+def get_label(dir):
+    # dir = file_path.split('/')[-2]
+    # if exclude != None:
+    #     for exc in exclude:
+    #         if dir.endswith(exc):
+    #             return -1
+
+    if dir.startswith('cardboard') or dir.startswith('paper') or dir.startswith('other_paper'):
         return 0
-    elif dir in ['dirty_plate_food_google', 'food_contamination_me', 'food_me']:
+    elif dir.startswith('glass'):
         return 1
-    elif dir in ['disposable_cup_google', 'disposable_cup_me']:
+    elif dir.startswith('metal'):
         return 2
-    elif dir in ['glass_me', 'glass_someone']:
+    elif dir.startswith('plastic_bag'):
         return 3
-    elif dir in ['metal_can_someone', 'metal_me']:
+    elif dir.startswith('plastic_bottle'):
         return 4
-    # elif dir in ['paper_bag_me']:
-    #     return 5
-    elif dir in ['plastic_bag_google', 'plastic_bag_wrap_me']:
+    elif dir.startswith('other_plastic') or dir.startswith('plastic_box'):
         return 5
-    elif dir in ['plastic_bottle_google', 'plastic_bottle_in_hand_google',
-                 'plastic_bottle_me', 'plastic_bottle_someone']:
+    elif dir.startswith('disposable_cup'):
         return 6
-    elif dir in ['other_plastic_me']:
+    elif dir.startswith('snack_wrapper') or dir.startswith('food_wrap'):
         return 7
-    elif dir in ['snack_wrappers_google', 'food_wrap_me']:
+    elif dir.startswith('dirty_plate') or dir.startswith('food'):
         return 8
-    elif dir in ['battery_me', 'electronic_me', 'napkin_me', 'other_me',
-                 'pizza_box_google', 'pizza_box_me',
-                 'styrofoam_google', 'styrofoam_me']:
-         return 9
+    elif dir.startswith('battery') or dir.startswith('electronic') or dir.startswith('napkin') or dir.startswith('other') \
+            or dir.startswith('pizza_box') or dir.startswith('styrofoam'):
+        return 9
     return -1
 
 def id_label(label):
-    classes = ['paper', 'food contamination', 'disposable cup',
-               'glass', 'metal', 'plastic bag', 'plastic bottle',
-               'other plastic', 'food / snack wraps', 'others']
+    classes = ['paper', 'glass', 'metal', 'plastic bag', 'plastic bottle',
+               'other plastic', 'disposable cup', 'food / snack wraps',
+               'food contamination','other']
     return classes[label]
 
 class WasteNetSubset(Dataset):
@@ -80,23 +80,36 @@ class WasteNetSubset(Dataset):
             print('{:s}: {:d}'.format(id_label(u), c))
 
 class WasteNetDataset(Dataset):
-    def __init__(self, root_dir, mode, store='ram'):
+    def __init__(self, root_dir, mode='none', store='ram', exclude='google'):
         super().__init__()
         self.images = list()
         self.labels = list()
         self.store = store
 
-        for file_path in glob.glob(os.path.join(root_dir, '*/**.png')):
-            label = get_label(file_path)
-            if label != -1:
-                if store == 'ram':
-                    fptr = Image.open(file_path).convert('RGB')
-                    file_copy = fptr.copy()
-                    fptr.close()
-                    self.images.append(file_copy)
-                elif store == 'disk':
-                    self.images.append(file_path)
-                self.labels.append(label)
+        if type(root_dir) != list:
+            root_dirs = list(root_dir)
+
+        if type(exclude) != list:
+            exclude = list(exclude)
+
+        for root_dir in root_dirs:
+            for file_path in glob.glob(os.path.join(root_dir, '*/**.png')):
+
+                dir = file_path.split('/')[-2]
+                for exc in exclude:
+                    if dir.endswith(exc):
+                        return -1
+
+                label = get_label(dir)
+                if label != -1:
+                    if store == 'ram':
+                        fptr = Image.open(file_path).convert('RGB')
+                        file_copy = fptr.copy()
+                        fptr.close()
+                        self.images.append(file_copy)
+                    elif store == 'disk':
+                        self.images.append(file_path)
+                    self.labels.append(label)
 
         if mode == 'train':
             self.transform = transform_train

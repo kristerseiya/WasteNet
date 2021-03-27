@@ -6,8 +6,12 @@ from PIL import Image
 import os
 import numpy as np
 
-def AddNoise():
-    return lambda x: x + torch.randn_like(x) * 15 / 255
+class AddNoise():
+    def __init__(self, max=15):
+        self.max = max / 255.
+
+    def __call__(self, x):
+        return x + torch.randn_like(x) * self.max * torch.rand(1).item()
 
 def get_transform(mode):
     if mode == 'train':
@@ -17,7 +21,7 @@ def get_transform(mode):
                                               transforms.RandomVerticalFlip(),
                                               transforms.RandomHorizontalFlip(),
                                               transforms.ToTensor(),
-                                              AddNoise(),
+                                              AddNoise(15),
                                               transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
                                              ])
 

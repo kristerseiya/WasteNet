@@ -5,14 +5,16 @@ import torch
 import os
 import seaborn as sn
 import pandas as pd
+import data
+import matplotlib.pyplot as plt
 
-def train_single_epoch(model, optimizer, train_loader):
+def train_single_epoch(model, optimizer, train_data):
 
-    dataset_size = len(train_loader.dataset)
+    dataset_size = len(train_data.dataset)
 
     total_loss = 0.
     model.train()
-    for images, labels in train_loader:
+    for images, labels in train_data:
         optimizer.zero_grad()
         images = images.to(model.device)
         labels = labels.to(model.device)
@@ -21,21 +23,18 @@ def train_single_epoch(model, optimizer, train_loader):
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
-        # predict = torch.zeros_like(labels, requires_grad=False)
-        # predict[output > 0.5] = 1
-        # n_correct += (predict == labels).sum().item() / float(output.size(0))
 
     return total_loss / float(dataset_size)
 
-def test(model, test_loader):
+def test(model, test_data):
 
-    dataset_size = len(test_loader.dataset)
+    dataset_size = len(test_data.dataset)
 
     with torch.no_grad():
         total_loss = 0.
         n_correct = 0.
         model.eval()
-        for images, labels in test_loader:
+        for images, labels in test_data:
             images = images.to(model.device)
             labels = labels.to(model.device)
             output = model(images)
@@ -48,13 +47,13 @@ def test(model, test_loader):
 
     return avg_loss, accuracy
 
-def get_confusion_matrix(model, test_loader, num_class=10):
+def get_confusion_matrix(model, test_data, num_class=10):
 
     cf_mtx = np.zeros([num_class, num_class])
 
     with torch.no_grad():
         model.eval()
-        for images, labels in test_loader:
+        for images, labels in test_data:
             images = images.to(model.device)
             labels = labels.to(model.device)
             output = model(images)
@@ -74,8 +73,8 @@ def plot_confusion_matrix(confusion_matrix):
     sn.heatmap(df_cm, annot=True, annot_kws={"size": 16}) # font size
     plt.show()
 
-def train(model, optimizer, max_epoch, train_loader,
-          val_loader=None, checkpoint_dir=None, max_tolerance=-1):
+def train(model, optimizer, max_epoch, train_data,
+          validation=None, checkpoint_dir=None, max_tolerance=-1):
 
     best_loss = 99999.
     tolerated = 0
@@ -86,18 +85,18 @@ def train(model, optimizer, max_epoch, train_loader,
 
         print('Epoch #{:d}'.format(e+1))
 
-        log[e, 0] = train_single_epoch(model, optimizer, train_loader)
+        log[e, 0] = train_single_epoch(model, optimizer, train_data)
 
         print('Train Loss: {:.3f}'.format(log[e, 0]))
 
-        if val_loader is not None:
+        if validation is not None:
 
-            log[e, 1], log[e, 2] = test(model, val_loader)
+            log[e, 1], log[e, 2] = test(model, validation)
 
             print('Val Loss: {:.3f}'.format(log[e, 1]))
             print('Val Accs: {:.3f}'.format(log[e, 2]))
 
-            if (best_loss > log[e, 1]):
+            if checkpoint_dir != None and (best_loss > log[e, 1]):
                 best_loss = log[e, 1]
                 if not os.path.exists(checkpoint_dir):
                     os.makedirs(checkpoint_dir)
@@ -115,7 +114,7 @@ if __name__ == '__main__':
 
     import argparse
     import data
-    from torch.utils.data import random_split, DataLoader
+    from torch.utils.data import DataLoader
     from torch.optim import Adam
     import model
 

@@ -6,20 +6,32 @@ from PIL import Image
 import os
 import numpy as np
 
-transform_train = transforms.Compose([transforms.RandomResizedCrop(200, scale=(0.5, 1.0)),
-                                      transforms.RandomAffine(180, shear=15),
-                                      transforms.ColorJitter(),
-                                      transforms.RandomVerticalFlip(),
-                                      transforms.RandomHorizontalFlip(),
-                                      transforms.ToTensor(),
-                                      transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-                                     ])
+def AddNoise():
+    return lambda x: x + torch.randn_like(x) * 15 / 255
 
-transform_infer = transforms.Compose([transforms.Resize(200),
-                                      transforms.CenterCrop(200),
-                                      transforms.ToTensor(),
-                                      transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-                                     ])
+def get_transform(mode):
+    if mode == 'train':
+        transform = trtransforms.Compose([transforms.RandomResizedCrop(200, scale=(0.5, 1.0)),
+                                              transforms.RandomAffine(180, shear=15),
+                                              transforms.ColorJitter(),
+                                              transforms.RandomVerticalFlip(),
+                                              transforms.RandomHorizontalFlip(),
+                                              transforms.ToTensor(),
+                                              AddNoise(),
+                                              transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                                             ])
+
+    elif mode in ['val', 'test']:
+        transform = transforms.Compose([transforms.Resize(200),
+                                              transforms.CenterCrop(200),
+                                              transforms.ToTensor(),
+                                              transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                                             ])
+
+    elif mode == 'none':
+        transform = lambda x: x
+
+    return transform
 
 def get_label(dir):
     # dir = file_path.split('/')[-2]
@@ -58,14 +70,10 @@ def id_label(label):
     return classes[label]
 
 class WasteNetSubset(Dataset):
-    def __init__(self, dataset, indices, mode):
+    def __init__(self, dataset, indices, mode='none'):
         self.dataset = dataset
         self.indices = indices
-
-        if mode == 'train':
-            self.transform = transform_train
-        elif mode in ['val', 'test']:
-            self.transform = transform_infer
+        self.transform = get_transform(mode)
 
     def __getitem__(self, idx):
         imgs, labels = self.dataset[self.indices[idx]]
@@ -80,14 +88,14 @@ class WasteNetSubset(Dataset):
             print('{:s}: {:d}'.format(id_label(u), c))
 
 class WasteNetDataset(Dataset):
-    def __init__(self, root_dir, mode='none', store='ram', exclude='google'):
+    def __init__(self, root_dirs, mode='none', store='ram', exclude='google'):
         super().__init__()
         self.images = list()
         self.labels = list()
         self.store = store
 
-        if type(root_dir) != list:
-            root_dirs = list(root_dir)
+        if type(root_dirs) != list:
+            root_dirs = list(root_dirs)
 
         if type(exclude) != list:
             exclude = list(exclude)
@@ -95,36 +103,28 @@ class WasteNetDataset(Dataset):
         for root_dir in root_dirs:
             for file_path in glob.glob(os.path.join(root_dir, '*/**.png')):
 
+                ignore = False
                 dir = file_path.split('/')[-2]
                 for exc in exclude:
                     if dir.endswith(exc):
-                        return -1
+                        ignore = True
 
-                label = get_label(dir)
-                if label != -1:
-                    if store == 'ram':
-                        fptr = Image.open(file_path).convert('RGB')
-                        file_copy = fptr.copy()
-                        fptr.close()
-                        self.images.append(file_copy)
-                    elif store == 'disk':
-                        self.images.append(file_path)
-                    self.labels.append(label)
+                if not ignore:
+                    label = get_label(dir)
+                    if label != -1:
+                        if store == 'ram':
+                            fptr = Image.open(file_path).convert('RGB')
+                            file_copy = fptr.copy()
+                            fptr.close()
+                            self.images.append(file_copy)
+                        elif store == 'disk':
+                            self.images.append(file_path)
+                        self.labels.append(label)
 
-        if mode == 'train':
-            self.transform = transform_train
-        elif mode in ['val', 'test']:
-            self.transform = transform_infer
-        elif mode == 'none':
-            self.transform = lambda x: x
+        self.transform = get_transform(mode)
 
     def set_mode(self, mode):
-        if mode == 'train':
-            self.transform = transform_train
-        elif mode in ['val', 'test']:
-            self.transform = transform_infer
-        elif mode == 'none':
-            self.transform = lambda x: x
+        self.transform = get_transform(mode)
 
     def __len__(self):
         return len(self.labels)
@@ -139,8 +139,8 @@ class WasteNetDataset(Dataset):
         for u, c in zip(unique, counts):
             print('{:s}: {:d}'.format(id_label(u), c))
 
-    def split(self, ratios):
-        ratios = ratios / np.sum(ratios)
+    def split(self, train_r, val_r, test_r):
+        ratios = [train_r, val_r, test_r] / (train_r, val_r, test_r)
         total_num = len(self.labels)
         indices = list(range(total_num))
         np.random.shuffle(indices)

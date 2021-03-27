@@ -17,7 +17,7 @@ class WasteNet(nn.Module):
         x = self.classifier(x)
         return x
 
-    def to(self, device)
+    def move(self, device):
         newself = self.to(device)
         newself.device = device
         return newself

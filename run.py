@@ -82,9 +82,9 @@ def plot_confusion_matrix(confusion_matrix):
     num_class = confusion_matrix.shape[0]
     df_cm = pd.DataFrame(confusion_matrix, index=data.id_label(slice(num_class)),
                                 columns=data.id_label(slice(num_class)))
-    plt.figure(figsize=(10,7))
+    # plt.figure(figsize=(10,7))
     # sn.set(font_scale=1.4) # for label size
-    sn.heatmap(df_cm, annot=True, annot_kws={"size": 16}) # font size
+    sn.heatmap(df_cm, annot=True, fmt='g') # font size
     plt.show()
 
 def train(model, optimizer, max_epoch, train_data,

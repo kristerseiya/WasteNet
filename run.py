@@ -80,7 +80,7 @@ def get_confusion_matrix(model, test_data, num_class=10):
 
 def plot_confusion_matrix(confusion_matrix):
     num_class = confusion_matrix.shape[0]
-    df_cm = pd.DataFrame(array, index=id_label(slice(num_class)),
+    df_cm = pd.DataFrame(confusion_matrix, index=id_label(slice(num_class)),
                                 columns=id_label(slice(num_class)))
     plt.figure(figsize=(10,7))
     # sn.set(font_scale=1.4) # for label size

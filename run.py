@@ -43,7 +43,7 @@ def validate(model, test_data):
     n_correct = 0.
     model.eval()
 
-    pbar = tqdm(total=len(train_data), position=0, leave=False, file=sys.stdout)
+    pbar = tqdm(total=len(test_data), position=0, leave=False, file=sys.stdout)
 
     for images, labels in test_data:
         images = images.to(model.device)

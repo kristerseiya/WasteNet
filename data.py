@@ -1,4 +1,5 @@
 
+import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 import glob
@@ -15,7 +16,7 @@ class AddNoise():
 
 def get_transform(mode):
     if mode == 'train':
-        transform = trtransforms.Compose([transforms.RandomResizedCrop(200, scale=(0.5, 1.0)),
+        transform = transforms.Compose([transforms.RandomResizedCrop(200, scale=(0.5, 1.0)),
                                               transforms.RandomAffine(180, shear=15),
                                               transforms.ColorJitter(),
                                               transforms.RandomVerticalFlip(),
@@ -33,7 +34,7 @@ def get_transform(mode):
                                              ])
 
     elif mode == 'none':
-        transform = lambda x: x
+        transform = transforms.Compose([])
 
     return transform
 
@@ -144,7 +145,7 @@ class WasteNetDataset(Dataset):
             print('{:s}: {:d}'.format(id_label(u), c))
 
     def split(self, train_r, val_r, test_r):
-        ratios = [train_r, val_r, test_r] / (train_r, val_r, test_r)
+        ratios = np.array([train_r, val_r, test_r]) / (train_r + val_r + test_r)
         total_num = len(self.labels)
         indices = list(range(total_num))
         np.random.shuffle(indices)

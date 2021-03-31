@@ -88,7 +88,8 @@ def plot_confusion_matrix(confusion_matrix):
     plt.show()
 
 def train(model, optimizer, max_epoch, train_data,
-          validation=None, checkpoint_dir=None, max_tolerance=-1):
+          validation=None, scheduler=None,
+          checkpoint_dir=None, max_tolerance=-1):
 
     best_loss = 99999.
     tolerated = 0
@@ -102,6 +103,10 @@ def train(model, optimizer, max_epoch, train_data,
         log[e, 0] = train_single_epoch(model, optimizer, train_data)
 
         print('Train Loss: {:.3f}'.format(log[e, 0]))
+
+        if scheduler is not None:
+
+            scheduler.step()
 
         if validation is not None:
 

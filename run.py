@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import sys
 
-def train_single_epoch(model, optimizer, train_data, loss_weight):
+def train_single_epoch(model, optimizer, train_data, scheduler=None, loss_weight=None):
 
     dataset_size = len(train_data.dataset)
 
@@ -28,6 +28,8 @@ def train_single_epoch(model, optimizer, train_data, loss_weight):
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * labels.size(0)
+        if scheduler != None:
+            scheduler.step()
         pbar.update(1)
 
     tqdm.close(pbar)
@@ -35,7 +37,7 @@ def train_single_epoch(model, optimizer, train_data, loss_weight):
     return total_loss / float(dataset_size)
 
 @torch.no_grad()
-def validate(model, test_data, loss_weight):
+def validate(model, test_data, loss_weight=None):
 
     dataset_size = len(test_data.dataset)
 
@@ -88,11 +90,15 @@ def plot_confusion_matrix(confusion_matrix):
     plt.show()
 
 def train(model, optimizer, max_epoch, train_data,
-          validation=None, scheduler=None,
+          validation=None, scheduler=None, lr_step='epoch',
           checkpoint_dir=None, max_tolerance=-1, loss_weight=None):
 
     best_loss = 99999.
     tolerated = 0
+
+    _scheduler = None
+    if lr_step == 'batch':
+        _scheduler = scheduler
 
     log = np.zeros([max_epoch, 3], dtype=np.float)
 
@@ -100,11 +106,11 @@ def train(model, optimizer, max_epoch, train_data,
 
         print('Epoch #{:d}'.format(e+1))
 
-        log[e, 0] = train_single_epoch(model, optimizer, train_data, loss_weight)
+        log[e, 0] = train_single_epoch(model, optimizer, train_data, _scheduler, loss_weight)
 
         print('Train Loss: {:.3f}'.format(log[e, 0]))
 
-        if scheduler is not None:
+        if lr_step == 'epoch' and scheduler is not None:
 
             scheduler.step()
 

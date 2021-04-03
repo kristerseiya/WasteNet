@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import sys
 
-def train_single_epoch(model, optimizer, train_data):
+def train_single_epoch(model, optimizer, train_data, loss_weight):
 
     dataset_size = len(train_data.dataset)
 
@@ -24,7 +24,7 @@ def train_single_epoch(model, optimizer, train_data):
         images = images.to(model.device)
         labels = labels.to(model.device)
         output = model(images)
-        loss = F.cross_entropy(output, labels)
+        loss = F.cross_entropy(output, labels, weight=loss_weight)
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * labels.size(0)
@@ -35,7 +35,7 @@ def train_single_epoch(model, optimizer, train_data):
     return total_loss / float(dataset_size)
 
 @torch.no_grad()
-def validate(model, test_data):
+def validate(model, test_data, loss_weight):
 
     dataset_size = len(test_data.dataset)
 
@@ -49,7 +49,7 @@ def validate(model, test_data):
         images = images.to(model.device)
         labels = labels.to(model.device)
         output = model(images)
-        total_loss += F.cross_entropy(output, labels).item() * labels.size(0)
+        total_loss += F.cross_entropy(output, labels, weight=loss_weight).item() * labels.size(0)
         predict = torch.argmax(output, -1)
         n_correct += (predict == labels).sum().item()
         pbar.update(1)
@@ -89,7 +89,7 @@ def plot_confusion_matrix(confusion_matrix):
 
 def train(model, optimizer, max_epoch, train_data,
           validation=None, scheduler=None,
-          checkpoint_dir=None, max_tolerance=-1):
+          checkpoint_dir=None, max_tolerance=-1, loss_weight=None):
 
     best_loss = 99999.
     tolerated = 0
@@ -100,7 +100,7 @@ def train(model, optimizer, max_epoch, train_data,
 
         print('Epoch #{:d}'.format(e+1))
 
-        log[e, 0] = train_single_epoch(model, optimizer, train_data)
+        log[e, 0] = train_single_epoch(model, optimizer, train_data, loss_weight)
 
         print('Train Loss: {:.3f}'.format(log[e, 0]))
 
@@ -110,7 +110,7 @@ def train(model, optimizer, max_epoch, train_data,
 
         if validation is not None:
 
-            log[e, 1], log[e, 2] = validate(model, validation)
+            log[e, 1], log[e, 2] = validate(model, validation, loss_weight)
 
             print('Val Loss: {:.3f}'.format(log[e, 1]))
             print('Val Accs: {:.3f}'.format(log[e, 2]))
@@ -138,38 +138,40 @@ def inference(model, image):
     x = x.unsqueeze(0)
     x = x.to(model.device)
 
-    output = model(image)
+    output = model(x)
     predict = torch.argmax(output, -1).item()
 
     return predict
+#
+# def run(model, image):
+#
+#     image = config.IMAGE_TRANFORM_INFERENCE(image)
+#     image = image.unsqueeze(0)
+#     image = image.to(model.device)
+#
+#     with torch.no_grad():
+#         model.eval()
+#         output = model(image)
+#         predict = torch.argmax(output, -1).item()
+#
+#     return predict
 
-def run(model, image):
+if __name__ == '__main__':
 
-    image = config.IMAGE_TRANFORM_INFERENCE(image)
-    image = image.unsqueeze(0)
-    image = image.to(model.device)
-
-    with torch.no_grad():
-        model.eval()
-        output = model(image)
-        predict = torch.argmax(output, -1).item()
-
-    return predict
 
 # if __name__ == '__main__':
 #
-#     import argparse
-#     import data
-#     from torch.utils.data import DataLoader
-#     from torch.optim import Adam
-#     import model
-#
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument('--weights', type=str, default=None)
-#     parser.add_argument('--data_dir', type=str, required=True)
-#     parser.add_argument('--n_epoch', type=int, required=True)
-#     parser.add_argument('--save', type=str, required=True)
-#     args = parser.parse_args()
+    import argparse
+    import data
+    from torch.utils.data import DataLoader
+    from torch.optim import Adam
+    import model
+    from PIL import Image
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--image', type=str, default=None)
+    parser.add_argument('--weights', type=str, required=True)
+    args = parser.parse_args()
 #
 #     dataset = data.WasteNetDataset(args.data_dir)
 #     trainset, valset, testset = dataset.split(0.7, 0.1, 0.2)
@@ -177,10 +179,12 @@ def run(model, image):
 #     valloader = DataLoader(valset, batch_size=64, shuffle=False)
 #     testloader = DataLoader(testset, batch_size=64, shuffle=False)
 #
-#     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-#     net = model.WasteNet().to(device)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    net = model.WasteNet().to(device)
 #     if args.weights != None:
-#         net.load_state_dict(torch.load(args.weights, map_location=device))
+    net.load_state_dict(torch.load(args.weights, map_location=device))
+    label = inference(net, Image.open(args.image).convert('RGB'))
+    print(data.id_label(label))
 #     optimizer = Adam(net.parameters(), lr=1e-4)
 #     train(net, optimizer, args.n_epoch, trainloader, valloader, args.save, -1)
 #

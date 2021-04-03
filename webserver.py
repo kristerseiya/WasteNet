@@ -7,6 +7,9 @@ import torchvision.transforms as transforms
 from PIL import Image
 from flask import Flask, jsonify, request
 from flask import render_template, Response
+import png
+import cv2
+import numpy as np
 
 import model
 import data
@@ -39,7 +42,16 @@ def predict():
         global img_bytes
         global class_name
         img_bytes = request.data
+
+        #nparr = np.fromstring(img_bytes, np.uint8)
+        #img_np = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        # reader = png.Reader(bytes=img_bytes)
+        # print(reader.asDirect())
+        # print(reader.validate_signature())
+        # img = reader.asRGB()
+        # print(type(img))
         img = bytes2PILImage(img_bytes)
+        #img = Image.fromarray(img_np)
         img.show()
         class_name = get_prediction(img)
         print(class_name)
